@@ -4,12 +4,14 @@ import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import { Loader2, AlertCircle, PackageX } from 'lucide-react'
 import { motion, AnimatePresence, Variants } from 'framer-motion'
+// NUEVO: Importamos useParams para atrapar el ID de la URL limpia
+import { useParams } from 'next/navigation' 
+import FondoUva from '../components/FondoUva'
+import ModalLegal from '../components/ModalLegal'
+import StoreHeader from '../components/StoreHeader'
+import RegisterForm from '../components/RegisterForm'
+import SuccessView from '../components/SuccessView'
 
-import StoreHeader from './components/StoreHeader'
-import RegisterForm from './components/RegisterForm'
-import SuccessView from './components/SuccessView'
-import FondoUva from './components/FondoUva'
-import ModalLegal from './components/ModalLegal'
 
 const carouselVariant: Variants = {
   hidden: { opacity: 0, x: 100, scale: 0.95 }, 
@@ -25,28 +27,31 @@ const carouselVariant: Variants = {
 
 export default function RegisterPage() {
   const CAMPAIGN_NAME = process.env.NEXT_PUBLIC_CAMPAIGN || 'x'
+  
+  // NUEVO: Extraemos el storeId directamente desde la estructura de carpetas de Next.js
+  const params = useParams()
+  // Asignamos el valor. params.storeId coincide exactamente con el nombre de tu carpeta [storeId]
+  const currentStoreId = params.storeId as string
 
   const [campaignId, setCampaignId] = useState('')
   const [storeId, setStoreId] = useState('')
+  const [storeName, setStoreName] = useState('')
   const [isValid, setIsValid] = useState<boolean | null>(null)
-  const [hasPrizes, setHasPrizes] = useState<boolean | null>(null) // NUEVO: Control de stock
+  const [hasPrizes, setHasPrizes] = useState<boolean | null>(null)
   const [loading, setLoading] = useState(false)
-  const [success, setSuccess] = useState<any>(null) // NUEVO: Guardará el premio ganado
+  const [success, setSuccess] = useState<any>(null)
   const [error, setError] = useState('')
   const [showLegal, setShowLegal] = useState(true)
 
   useEffect(() => {
     const initCampaignAndStore = async () => {
-      // 1. Obtener el ID de la tienda desde la URL (?store=uuid-de-la-tienda)
-      const urlParams = new URLSearchParams(window.location.search)
-      const urlStoreId = urlParams.get('store')
-
-      if (!urlStoreId) {
+      // 1. Validar que la URL tenga un ID
+      if (!currentStoreId) {
         setIsValid(false)
         return
       }
 
-      setStoreId(urlStoreId)
+      setStoreId(currentStoreId)
 
       // 2. Validar la Campaña
       const { data: campaign, error: campError } = await supabase
@@ -61,11 +66,11 @@ export default function RegisterPage() {
       }
       setCampaignId(campaign.id)
 
-      // 3. Validar que la tienda exista y esté activa
+      // 3. Validar que la tienda exista y esté activa usando el ID de la URL
       const { data: store, error: storeError } = await supabase
         .from('stores')
-        .select('id, is_active')
-        .eq('id', urlStoreId)
+        .select('id, is_active, name')
+        .eq('id', currentStoreId)
         .single()
 
       if (storeError || !store || !store.is_active) {
@@ -73,25 +78,27 @@ export default function RegisterPage() {
         return
       }
 
+      setStoreName(store.name || '')
+
       // 4. VERIFICAR STOCK DE PREMIOS EN ESTA TIENDA
       const { data: prizes } = await supabase
         .from('prizes')
         .select('id, stock')
-        .eq('store_id', urlStoreId)
+        .eq('store_id', currentStoreId)
         .eq('is_active', true)
-        .gt('stock', 0) // Solo trae los que tengan stock mayor a 0
+        .gt('stock', 0)
 
       if (!prizes || prizes.length === 0) {
-        setHasPrizes(false) // No hay stock
-        setIsValid(true) // La campaña es válida, pero no hay premios
+        setHasPrizes(false)
+        setIsValid(true)
       } else {
-        setHasPrizes(true) // ¡Hay premios!
+        setHasPrizes(true)
         setIsValid(true)
       }
     }
 
     initCampaignAndStore()
-  }, [CAMPAIGN_NAME])
+  }, [CAMPAIGN_NAME, currentStoreId]) // Agregamos currentStoreId a las dependencias
 
   // PANTALLA DE CARGA
   if (isValid === null || hasPrizes === null) return (
@@ -117,7 +124,7 @@ export default function RegisterPage() {
     </>
   )
 
-  // ERROR 2: TIENDA SIN PREMIOS (NUEVO)
+  // ERROR 2: TIENDA SIN PREMIOS
   if (hasPrizes === false) return (
     <>
       <FondoUva />
@@ -163,16 +170,16 @@ export default function RegisterPage() {
 
                   <RegisterForm 
                     campaignId={campaignId}
-                    storeId={storeId} // Pasamos la tienda al form
+                    storeId={storeId} 
                     setLoading={setLoading}
                     loading={loading}
-                    setSuccess={setSuccess} // Ahora guardará el objeto del premio
+                    setSuccess={setSuccess} 
                     setError={setError}
                     error={error}
                   />
                 </>
               ) : (
-                <SuccessView prize={success} /> // Le pasamos el premio ganado
+                <SuccessView prize={success} storeName={storeName} /> 
               )}
             </motion.div>
           )}
