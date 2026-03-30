@@ -163,7 +163,7 @@ export default function RegisterPage() {
                     transition={{ type: "spring", stiffness: 260, damping: 25, delay: 0.2 }}
                     className="bg-[#2c4896] w-fit py-2 sm:py-2 pr-8 sm:pr-10 rounded-r-full shadow-[5px_5px_15px_rgba(0,0,0,0.3)] mt-0 mb-4 sm:mt-0 sm:mb-6 relative z-20 -ml-8 sm:-ml-20 pl-10 sm:pl-16"
                   >
-                    <h2 className="text-white font-fantapop text-xl sm:text-4xl uppercase translate-y-[2px] sm:translate-y-[4px]">
+                    <h2 className="text-white font-fantapop text-3xl sm:text-3xl uppercase translate-y-[2px] sm:translate-y-[4px]">
                       Registro
                     </h2>
                   </motion.div>

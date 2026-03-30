@@ -21,16 +21,16 @@ export default function StoreHeader({ storeId }: StoreHeaderProps) {
 
   return (
     <motion.header 
-      className="text-center mb-10"
+      className="text-center mb-8"
       variants={headerVariant}
       initial="hidden"
       animate="visible"
     >
-      <div className="rounded-[2rem] flex items-center justify-center mx-auto mb-6 overflow-hidden p-10">
+      <div className="rounded-[2rem] flex items-center justify-center mx-auto mb-1 overflow-hidden p-5">
         <motion.img 
           src="/logofantaxbox.png" 
           alt="Fanta x Xbox Logo" 
-          className="w-full h-full object-contain"
+          className="w-85 h-full object-contain"
           animate={{ y: [-8, 8, -8] }}
           transition={{ repeat: Infinity, duration: 4, ease: "easeInOut" }}
         />

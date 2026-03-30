@@ -239,7 +239,7 @@ export default function RegisterForm({
         <label className={`flex items-center justify-between w-full px-6 py-2 sm:py-2.5 rounded-full cursor-pointer transition-all bg-white shadow-xl focus-within:ring-4 focus-within:ring-[#961cd9]/30 ${file ? 'text-[#961cd9]' : 'text-[#961cd9]'}`}>
           
           <div className="flex items-center gap-3">
-            <span className="text-xs sm:text-lg font-fantapop truncate max-w-[180px] sm:max-w-[200px] translate-y-[2px] sm:translate-y-[3px]">
+            <span className="text-md sm:text-lg font-fantapop truncate max-w-[180px] sm:max-w-[200px] translate-y-[2px] sm:translate-y-[3px]">
               {file ? 'VOUCHER CARGADO' : 'SUBIR IMAGEN'}
             </span>
           </div>
