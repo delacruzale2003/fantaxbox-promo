@@ -1,0 +1,90 @@
+@import "tailwindcss";
+
+/* 1. IMPORTACIÓN DE FUENTES (Asegúrate de tener los archivos en public/fonts/) */
+
+@font-face {
+  font-family: 'FantaPop';
+  src: url('/FantaPop-Regular.otf') format('opentype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Moranga';
+  /* Nota: Es recomendable quitarle los espacios al nombre del archivo real, pero lo dejo como lo pediste */
+  src: url('/Latinotype - Moranga Bold.otf') format('opentype');
+  font-weight: bold;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Para MarkPro agrupamos ambas bajo la misma familia, separándolas por el peso (weight) */
+@font-face {
+  font-family: 'MarkPro';
+  src: url('/fonts/MarkPro-Regular.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'MarkPro';
+  src: url('/fonts/MARKPROBOLD.OTF') format('opentype');
+  font-weight: bold;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* 2. VARIABLES GLOBALES Y TEMA TAILWIND */
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+  
+  /* BONO: Al agregar esto en Tailwind v4, puedes usar className="font-fantapop" automáticamente sin crear la clase manual abajo */
+  --font-fantapop: 'FantaPop', sans-serif;
+  --font-moranga: 'Moranga', serif;
+  --font-markpro: 'MarkPro', sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+  }
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+/* 3. CLASES PERSONALIZADAS (Como las pediste) */
+
+.font-fantapop {
+  font-family: 'FantaPop', sans-serif;
+}
+
+.font-moranga {
+  font-family: 'Moranga', serif;
+  font-weight: bold;
+}
+
+.font-markpro {
+  font-family: 'MarkPro', sans-serif;
+  font-weight: normal;
+}
+
+.font-markpro-bold {
+  font-family: 'MarkPro', sans-serif;
+  font-weight: bold;
+}
