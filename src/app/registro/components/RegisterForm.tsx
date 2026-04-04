@@ -29,7 +29,6 @@ const errorVariants: Variants = {
   exit: { opacity: 0, height: 0, scale: 0.8, marginBottom: 0, transition: { duration: 0.2 } }
 }
 
-// 1. SOLUCIÓN AL ERROR DE TYPESCRIPT: Definimos la interfaz de las Props
 interface RegisterFormProps {
   campaignId: string
   storeId: string
@@ -40,7 +39,6 @@ interface RegisterFormProps {
   setError: (error: string) => void
 }
 
-// 2. Le decimos al componente que use esta interfaz en lugar de "any"
 export default function RegisterForm({ 
   campaignId, 
   storeId, 
@@ -51,7 +49,8 @@ export default function RegisterForm({
   setError 
 }: RegisterFormProps) {
   
-  const [formData, setFormData] = useState({ fullName: '', email: '', phone: '' })
+  // ELIMINADO EL CAMPO 'email' DEL ESTADO
+  const [formData, setFormData] = useState({ fullName: '', phone: '' })
   const [file, setFile] = useState<File | null>(null)
 
   const compressImage = async (file: File): Promise<File> => {
@@ -85,15 +84,9 @@ export default function RegisterForm({
       return
     }
 
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    if (!emailRegex.test(formData.email)) {
-       setError('Por favor, ingresa un correo electrónico válido.')
-       setLoading(false)
-       return
-    }
+    // SE ELIMINÓ LA VALIDACIÓN DEL EMAIL (emailRegex)
 
     try {
-      // 3. LA LÓGICA DEL SORTEO: Verificar premios disponibles
       const { data: availablePrizes, error: fetchError } = await supabase
         .from('prizes')
         .select('*')
@@ -107,10 +100,8 @@ export default function RegisterForm({
         return
       }
 
-      // 4. EL SORTEO AL AZAR
       const randomPrize = availablePrizes[Math.floor(Math.random() * availablePrizes.length)]
 
-      // 5. SUBIR FOTO
       const optimized = await compressImage(file)
       const path = `${campaignId}/registros_generales/${Date.now()}.webp`
       
@@ -122,21 +113,19 @@ export default function RegisterForm({
       
       const { data: urlData } = supabase.storage.from('vouchers').getPublicUrl(path)
 
-      // 6. GUARDAR REGISTRO CON EL ID DEL PREMIO Y LA TIENDA
       const { error: insertError } = await supabase.from('registrations').insert({
         full_name: formData.fullName, 
-        email: formData.email, 
+        email: null, // Pasamos null o 'N/A' ya que el campo ya no se usa
         phone: formData.phone,
         dni: 'N/A', 
         voucher_url: urlData.publicUrl, 
         campaign_id: campaignId,
-        store_id: storeId, // Usamos la tienda correcta
-        prize_id: randomPrize.id // Vinculamos el premio que ganó
+        store_id: storeId, 
+        prize_id: randomPrize.id 
       })
 
       if (insertError) throw new Error('insert_failed')
       
-      // 7. ACTUALIZAR EL STOCK DEL PREMIO (-1)
       const { error: updateError } = await supabase
         .from('prizes')
         .update({ stock: randomPrize.stock - 1 })
@@ -144,7 +133,6 @@ export default function RegisterForm({
 
       if (updateError) console.error("Error actualizando stock:", updateError)
 
-      // 8. PASAR EL PREMIO AL SIGUIENTE COMPONENTE
       setSuccess(randomPrize)
 
     } catch (err: any) { 
@@ -206,17 +194,7 @@ export default function RegisterForm({
         />
       </motion.div>
 
-      {/* CORREO */}
-      <motion.div variants={itemVariants} className="space-y-1">
-        <label className="text-[19px] sm:text-[20px] font-fantapop  text-white ml-3 uppercase  ">Correo :</label>
-        <input 
-          type="email" 
-          required
-          maxLength={80}
-          className="w-full px-6 py-2 rounded-full bg-white border-none outline-none text-black font-bold shadow-xl focus:ring-4 focus:ring-[#2c4896]/30 transition-all text-sm sm:text-base"
-          onChange={e => setFormData({...formData, email: e.target.value})}
-        />
-      </motion.div>
+      {/* SE ELIMINÓ EL INPUT DE CORREO DE AQUÍ */}
 
       {/* TELÉFONO */}
       <motion.div variants={itemVariants} className="space-y-1">

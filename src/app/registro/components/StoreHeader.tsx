@@ -37,4 +37,4 @@ export default function StoreHeader({ storeId }: StoreHeaderProps) {
       </div>
     </motion.header>
   )
-}
+} 
