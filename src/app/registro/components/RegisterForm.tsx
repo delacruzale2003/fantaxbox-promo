@@ -1,7 +1,7 @@
 'use client'
 import { useState } from 'react'
 import { supabase } from '@/lib/supabase'
-import { Loader2, AlertTriangle, ArrowUp, Check } from 'lucide-react'
+import { Loader2, AlertTriangle, ArrowUp, Check, Camera, Image as ImageIcon } from 'lucide-react'
 import { motion, Variants, AnimatePresence } from 'framer-motion'
 
 const containerVariants: Variants = {
@@ -213,31 +213,67 @@ export default function RegisterForm({
 
       {/* SUBIR FOTO PILL STYLE */}
       <motion.div variants={itemVariants} className="space-y-1">
-        <label className="text-[19px] sm:text-[20px] font-fantapop text-white ml-3 uppercase">Subir foto de voucher :</label>
-        <label className={`flex items-center justify-between w-full px-6 py-2 sm:py-2.5 rounded-full cursor-pointer transition-all bg-white shadow-xl focus-within:ring-4 focus-within:ring-[#961cd9]/30 ${file ? 'text-[#961cd9]' : 'text-[#961cd9]'}`}>
-          
-          <div className="flex items-center gap-3">
-            <span className="text-md sm:text-lg font-fantapop truncate max-w-[180px] sm:max-w-[200px] translate-y-[2px] sm:translate-y-[3px]">
-              {file ? 'VOUCHER CARGADO' : 'SUBIR IMAGEN'}
-            </span>
-          </div>
-          
-          <div className={`p-1.5 sm:p-1 rounded-full bg-[#961cd9] text-white transition-opacity duration-500 ease-in-out ${file ? 'opacity-100' : 'opacity-60'}`}>
-            {file ? (
-              <Check size={16} strokeWidth={3} className="sm:w-5 sm:h-5" />
-            ) : (
-              <ArrowUp size={16} strokeWidth={3} className="sm:w-5 sm:h-5" />
-            )}
-          </div>
-
-          <input 
-            type="file" 
-            className="hidden" 
-            accept="image/*" 
-            capture="environment" 
-            onChange={e => setFile(e.target.files?.[0] || null)} 
-          />
+        <label className="text-[19px] sm:text-[20px] font-fantapop text-white ml-3 uppercase">
+          {file ? 'Voucher cargado :' : 'Subir foto de voucher :'}
         </label>
+        
+        {file ? (
+          /* ESTADO: ARCHIVO CARGADO */
+          <div className="flex items-center justify-between w-full px-6 py-2 sm:py-2.5 rounded-full bg-white shadow-xl text-[#961cd9] transition-all">
+            <div className="flex items-center gap-3">
+              <span className="text-md sm:text-lg font-fantapop truncate max-w-[180px] sm:max-w-[200px] translate-y-[2px] sm:translate-y-[3px]">
+                VOUCHER CARGADO
+              </span>
+            </div>
+            
+            <div className="flex items-center gap-3">
+              {/* Botón para deshacer y elegir otra foto */}
+              <button 
+                type="button" 
+                onClick={() => setFile(null)}
+                className="text-[11px] sm:text-xs font-bold text-gray-400 underline hover:text-gray-600 uppercase"
+              >
+                Cambiar
+              </button>
+              <div className="p-1.5 sm:p-1 rounded-full bg-[#961cd9] text-white opacity-100 transition-opacity duration-500 ease-in-out">
+                <Check size={16} strokeWidth={3} className="sm:w-5 sm:h-5" />
+              </div>
+            </div>
+          </div>
+        ) : (
+          /* ESTADO: SIN ARCHIVO (MOSTRAR 2 OPCIONES) */
+          <div className="flex gap-2 sm:gap-3">
+            {/* OPCIÓN 1: FORZAR CÁMARA */}
+            <label className="flex-1 flex items-center justify-center gap-2 px-2 py-2 sm:py-2.5 rounded-full cursor-pointer transition-all bg-white shadow-xl hover:bg-gray-50 text-[#961cd9] focus-within:ring-4 focus-within:ring-[#961cd9]/30">
+              <Camera size={18} strokeWidth={2.5} className="shrink-0" />
+              <span className="text-sm sm:text-base font-fantapop translate-y-[2px] sm:translate-y-[3px]">
+                CÁMARA
+              </span>
+              <input 
+                type="file" 
+                className="hidden" 
+                accept="image/*" 
+                capture="environment" // <-- Esto fuerza la cámara
+                onChange={e => setFile(e.target.files?.[0] || null)} 
+              />
+            </label>
+
+            {/* OPCIÓN 2: ABRIR GALERÍA */}
+            <label className="flex-1 flex items-center justify-center gap-2 px-2 py-2 sm:py-2.5 rounded-full cursor-pointer transition-all bg-white shadow-xl hover:bg-gray-50 text-[#961cd9] focus-within:ring-4 focus-within:ring-[#961cd9]/30">
+              <ImageIcon size={18} strokeWidth={2.5} className="shrink-0" />
+              <span className="text-sm sm:text-base font-fantapop translate-y-[2px] sm:translate-y-[3px]">
+                GALERÍA
+              </span>
+              <input 
+                type="file" 
+                className="hidden" 
+                accept="image/*" 
+                // <-- Al no tener 'capture', los teléfonos abrirán la galería/archivos
+                onChange={e => setFile(e.target.files?.[0] || null)} 
+              />
+            </label>
+          </div>
+        )}
       </motion.div>
 
       {/* BOTÓN ENVIAR */}
