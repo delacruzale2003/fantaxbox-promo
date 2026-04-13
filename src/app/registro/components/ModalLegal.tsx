@@ -27,22 +27,23 @@ export default function ModalLegal({ onAccept }: ModalLegalProps) {
       >
         {/* Usamos font-markpro para que sea muy fácil de leer */}
         <div className="text-white/90 font-markpro text-xs sm:text-sm leading-relaxed mb-6 py-4 text-left h-48 sm:h-auto overflow-y-auto">
-          <p className="mb-3">
-            Promoción valida a nivel nacional a través del CANAL MODERNO/AASS, del 01
-            de Abril al 30 de Abril del 2026 y/o hasta agotar stock. Mecánica:
+          <p className="mb-3 font-bold">
+            <strong></strong>
+            Promoción valida a nivel nacional a través del <strong> CANAL MODERNO/AASS</strong>, del 01
+            de Abril al 30 de Abril del 2026 y/o hasta agotar stock.  Mecánica:
             Participan personas naturales mayores de 18 años, con residencia
             legal y domicilio en el territorio nacional del Perú. Por la compra
             de 15 soles a mas que incluya una 1 botella de Fanta Uva de 500 ml
-            en CANAL MODERNO, podrás participar de la PROMO FANTA GAMING
+            en  <strong> CANAL MODERNO/AASS</strong>, podrás participar de la PROMO FANTA GAMING
             ingresando al QR ubicado en tienda y subiendo una foto de tu boucher
             de compra podrás ganar diversos premios al instante.
           </p>
 
-          <p>
+          <p className="font-bold">
             Encuentra nuestros de activación , juega y reclama tu premio a
             nuestros activadores de tiendas .
           </p>
-          <p>
+          <p className="font-bold">
             Organiza AC CORPORATIVO. (antes Corporación Lindley S.A) Av. Javier
             Prado Este 6210, piso 10 La Molina.{" "}
           </p>
