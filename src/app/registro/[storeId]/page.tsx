@@ -177,6 +177,24 @@ export default function RegisterPage() {
                     setError={setError}
                     error={error}
                   />
+
+                  {/* Nombre de la tienda ajustado al contenido */}
+                  {storeName && (
+                    <motion.div 
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.5, duration: 0.5 }}
+                      className="mt-6 sm:mt-8 text-center"
+                    >
+                      <p className="text-white/70 text-[10px] sm:text-xs font-bold uppercase tracking-widest mb-1 mt-4">
+                        Tienda
+                      </p>
+                      {/* Aquí cambiamos max-w-3xs por w-fit / inline-block y ajustamos el padding horizontal (px-6) */}
+                      <p className="text-white font-fantapop text-lg sm:text-xl tracking-wider uppercase bg-[#550a7f] rounded-full py-1.5 sm:py-2 px-6 inline-block">
+                        {storeName}
+                      </p>
+                    </motion.div>
+                  )}
                 </>
               ) : (
                 <SuccessView prize={success} storeName={storeName} /> 
