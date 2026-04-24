@@ -1,7 +1,7 @@
 'use client'
 import { useState } from 'react'
 import { supabase } from '@/lib/supabase'
-import { Loader2, AlertTriangle, ArrowUp, Check, Camera, Image as ImageIcon } from 'lucide-react'
+import { Loader2, AlertTriangle, Check, Camera, Image as ImageIcon } from 'lucide-react'
 import { motion, Variants, AnimatePresence } from 'framer-motion'
 
 const containerVariants: Variants = {
@@ -49,7 +49,6 @@ export default function RegisterForm({
   setError 
 }: RegisterFormProps) {
   
-  // ELIMINADO EL CAMPO 'email' DEL ESTADO
   const [formData, setFormData] = useState({ fullName: '', phone: '' })
   const [file, setFile] = useState<File | null>(null)
 
@@ -84,24 +83,51 @@ export default function RegisterForm({
       return
     }
 
-    // SE ELIMINÓ LA VALIDACIÓN DEL EMAIL (emailRegex)
-
     try {
-      const { data: availablePrizes, error: fetchError } = await supabase
+      // 1. BUSCAR PREMIOS: Solo los que tengan stock en esta tienda
+      const { data: rawPrizes, error: fetchError } = await supabase
         .from('prizes')
         .select('*')
-        .eq('store_id', storeId)
         .eq('is_active', true)
+        .eq('store_id', storeId)
         .gt('stock', 0)
 
-      if (fetchError || !availablePrizes || availablePrizes.length === 0) {
+      if (fetchError || !rawPrizes || rawPrizes.length === 0) {
         setError('¡Oh no! Los últimos premios acaban de ser entregados mientras llenabas tus datos.')
         setLoading(false)
         return
       }
 
-      const randomPrize = availablePrizes[Math.floor(Math.random() * availablePrizes.length)]
+      // 2. LÓGICA DE CAJAS BLINDADA (Agrupación Estricta)
+      const batches: Record<number, any[]> = { 1: [], 2: [], 3: [], 4: [] };
+      
+      // Metemos cada premio en su caja correspondiente
+      rawPrizes.forEach(p => {
+        let b = Number(p.batch_number);
+        if (isNaN(b) || b < 1) b = 1; // Si no tiene lote, a la fuerza va al 1
+        if (b > 4) b = 4;             // Límite máximo 4
+        batches[b].push(p);
+      });
 
+      let activePrizesToRoll: any[] = [];
+      let selectedBatch = 0;
+
+      // Iteramos en orden (1, 2, 3, 4). AL PRIMERO que tenga algo, NOS DETENEMOS.
+      for (let i = 1; i <= 4; i++) {
+        if (batches[i].length > 0) {
+          activePrizesToRoll = batches[i];
+          selectedBatch = i;
+          break; // ESTO ES CLAVE: Detiene la búsqueda. Jamás verá la caja 2 si la 1 tiene algo.
+        }
+      }
+
+      console.log(`✅ Lote Ganador Seleccionado: ${selectedBatch}`);
+      console.table(activePrizesToRoll.map(p => ({ Premio: p.name, Stock: p.stock })));
+
+      // 3. ELEGIR PREMIO AL AZAR (SOLO DE ESA CAJA)
+      const randomPrize = activePrizesToRoll[Math.floor(Math.random() * activePrizesToRoll.length)]
+
+      // 4. SUBIDA DE IMAGEN
       const optimized = await compressImage(file)
       const path = `${campaignId}/registros_generales/${Date.now()}.webp`
       
@@ -110,12 +136,12 @@ export default function RegisterForm({
         .upload(path, optimized)
 
       if (uploadError) throw new Error('upload_failed')
-      
       const { data: urlData } = supabase.storage.from('vouchers').getPublicUrl(path)
 
+      // 5. REGISTRO EN BASE DE DATOS
       const { error: insertError } = await supabase.from('registrations').insert({
         full_name: formData.fullName, 
-        email: null, // Pasamos null o 'N/A' ya que el campo ya no se usa
+        email: null,
         phone: formData.phone,
         dni: 'N/A', 
         voucher_url: urlData.publicUrl, 
@@ -126,26 +152,17 @@ export default function RegisterForm({
 
       if (insertError) throw new Error('insert_failed')
       
-      const { error: updateError } = await supabase
+      // 6. DESCONTAR STOCK
+      await supabase
         .from('prizes')
         .update({ stock: randomPrize.stock - 1 })
         .eq('id', randomPrize.id)
 
-      if (updateError) console.error("Error actualizando stock:", updateError)
-
       setSuccess(randomPrize)
 
     } catch (err: any) { 
-      console.error("Detalle técnico del error:", err)
-      
-      const errorMessage = err?.message || ''
-      if (errorMessage.includes('Failed to fetch') || errorMessage.includes('NetworkError')) {
-        setError('Sin conexión. Revisa tu internet e inténtalo de nuevo.')
-      } else if (errorMessage.includes('upload_failed')) {
-        setError('No pudimos procesar la imagen. Intenta con otra foto.')
-      } else {
-        setError('¡Ups! Tuvimos un inconveniente. Por favor, intenta de nuevo.') 
-      }
+      console.error(err)
+      setError('¡Ups! Tuvimos un inconveniente con el sistema. Intenta de nuevo.') 
     } finally { 
       setLoading(false) 
     }
@@ -169,9 +186,7 @@ export default function RegisterForm({
         {error && (
           <motion.div 
             variants={errorVariants}
-            initial="hidden"
-            animate="visible"
-            exit="exit"
+            initial="hidden" animate="visible" exit="exit"
             className="flex items-center gap-3 p-3 px-5 bg-white text-black text-[11px] sm:text-sm font-bold rounded-full shadow-xl w-fit mx-auto border border-zinc-200"
           >
             <AlertTriangle className="text-[#f89824] shrink-0" size={18} />
@@ -180,121 +195,55 @@ export default function RegisterForm({
         )}
       </AnimatePresence>
       
-      {/* NOMBRES */}
       <motion.div variants={itemVariants} className="space-y-1">
         <label className="text-[19px] sm:text-[20px] font-fantapop  text-white ml-3 uppercase  ">Nombres y Apellidos :</label>
-        <input 
-          type="text" 
-          required
-          maxLength={50}
-          pattern="^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$"
-          title="Solo se permiten letras y espacios."
-          className="w-full px-6 py-2 rounded-full bg-white border-none outline-none text-black font-bold shadow-xl focus:ring-4 focus:ring-[#2c4896]/30 transition-all text-sm sm:text-base"
+        <input type="text" required maxLength={50} pattern="^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$" title="Solo letras"
+          className="w-full px-6 py-2 rounded-full bg-white border-none outline-none text-black font-bold shadow-xl focus:ring-4 focus:ring-[#2c4896]/30 transition-all"
           onChange={e => setFormData({...formData, fullName: e.target.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ\s]/g, '')})}
         />
       </motion.div>
 
-      {/* SE ELIMINÓ EL INPUT DE CORREO DE AQUÍ */}
-
-      {/* TELÉFONO */}
       <motion.div variants={itemVariants} className="space-y-1">
         <label className="text-[19px] sm:text-[20px] font-fantapop  text-white ml-3 uppercase  ">Teléfono :</label>
-        <input 
-          type="tel" 
-          required
-          maxLength={9} 
-          minLength={9}
-          inputMode="numeric"
-          pattern="[0-9]{9}"
-          className="w-full px-6 py-2 rounded-full bg-white border-none outline-none text-black font-bold shadow-xl focus:ring-4 focus:ring-[#2c4896]/30 transition-all text-sm sm:text-base"
+        <input type="tel" required maxLength={9} minLength={9} inputMode="numeric" pattern="[0-9]{9}"
+          className="w-full px-6 py-2 rounded-full bg-white border-none outline-none text-black font-bold shadow-xl focus:ring-4 focus:ring-[#2c4896]/30 transition-all"
           onChange={e => setFormData({...formData, phone: e.target.value.replace(/\D/g,'')})}
         />
       </motion.div>
 
-      {/* SUBIR FOTO PILL STYLE */}
       <motion.div variants={itemVariants} className="space-y-1">
         <label className="text-[19px] sm:text-[20px] font-fantapop text-white ml-3 uppercase">
           {file ? 'Voucher cargado :' : 'Subir foto de voucher :'}
         </label>
-        
         {file ? (
-          /* ESTADO: ARCHIVO CARGADO */
           <div className="flex items-center justify-between w-full px-6 py-2 sm:py-2.5 rounded-full bg-white shadow-xl text-[#961cd9] transition-all">
+            <span className="text-md sm:text-lg font-fantapop truncate max-w-[180px]">VOUCHER CARGADO</span>
             <div className="flex items-center gap-3">
-              <span className="text-md sm:text-lg font-fantapop truncate max-w-[180px] sm:max-w-[200px] translate-y-[2px] sm:translate-y-[3px]">
-                VOUCHER CARGADO
-              </span>
-            </div>
-            
-            <div className="flex items-center gap-3">
-              {/* Botón para deshacer y elegir otra foto */}
-              <button 
-                type="button" 
-                onClick={() => setFile(null)}
-                className="text-[11px] sm:text-xs font-bold text-gray-400 underline hover:text-gray-600 uppercase"
-              >
-                Cambiar
-              </button>
-              <div className="p-1.5 sm:p-1 rounded-full bg-[#961cd9] text-white opacity-100 transition-opacity duration-500 ease-in-out">
-                <Check size={16} strokeWidth={3} className="sm:w-5 sm:h-5" />
-              </div>
+              <button type="button" onClick={() => setFile(null)} className="text-[11px] sm:text-xs font-bold text-gray-400 underline hover:text-gray-600 uppercase">Cambiar</button>
+              <div className="p-1.5 rounded-full bg-[#961cd9] text-white"><Check size={16} strokeWidth={3} /></div>
             </div>
           </div>
         ) : (
-          /* ESTADO: SIN ARCHIVO (MOSTRAR 2 OPCIONES) */
           <div className="flex gap-2 sm:gap-3">
-            {/* OPCIÓN 1: FORZAR CÁMARA */}
-            <label className="flex-1 flex items-center justify-center gap-2 px-2 py-2 sm:py-2.5 rounded-full cursor-pointer transition-all bg-white shadow-xl hover:bg-gray-50 text-[#961cd9] focus-within:ring-4 focus-within:ring-[#961cd9]/30">
-              <Camera size={18} strokeWidth={2.5} className="shrink-0" />
-              <span className="text-sm sm:text-base font-fantapop translate-y-[2px] sm:translate-y-[3px]">
-                CÁMARA
-              </span>
-              <input 
-                type="file" 
-                className="hidden" 
-                accept="image/*" 
-                capture="environment" // <-- Esto fuerza la cámara
-                onChange={e => setFile(e.target.files?.[0] || null)} 
-              />
+            <label className="flex-1 flex items-center justify-center gap-2 px-2 py-2 sm:py-2.5 rounded-full cursor-pointer bg-white shadow-xl hover:bg-gray-50 text-[#961cd9]">
+              <Camera size={18} strokeWidth={2.5} /> <span className="text-sm font-fantapop translate-y-[2px]">CÁMARA</span>
+              <input type="file" className="hidden" accept="image/*" capture="environment" onChange={e => setFile(e.target.files?.[0] || null)} />
             </label>
-
-            {/* OPCIÓN 2: ABRIR GALERÍA */}
-            <label className="flex-1 flex items-center justify-center gap-2 px-2 py-2 sm:py-2.5 rounded-full cursor-pointer transition-all bg-white shadow-xl hover:bg-gray-50 text-[#961cd9] focus-within:ring-4 focus-within:ring-[#961cd9]/30">
-              <ImageIcon size={18} strokeWidth={2.5} className="shrink-0" />
-              <span className="text-sm sm:text-base font-fantapop translate-y-[2px] sm:translate-y-[3px]">
-                GALERÍA
-              </span>
-              <input 
-                type="file" 
-                className="hidden" 
-                accept="image/*" 
-                // <-- Al no tener 'capture', los teléfonos abrirán la galería/archivos
-                onChange={e => setFile(e.target.files?.[0] || null)} 
-              />
+            <label className="flex-1 flex items-center justify-center gap-2 px-2 py-2 sm:py-2.5 rounded-full cursor-pointer bg-white shadow-xl hover:bg-gray-50 text-[#961cd9]">
+              <ImageIcon size={18} strokeWidth={2.5} /> <span className="text-sm font-fantapop translate-y-[2px]">GALERÍA</span>
+              <input type="file" className="hidden" accept="image/*" onChange={e => setFile(e.target.files?.[0] || null)} />
             </label>
           </div>
         )}
       </motion.div>
 
-      {/* BOTÓN ENVIAR */}
       <motion.div variants={itemVariants} className="pt-4 sm:pt-6 justify-center flex">
-        <motion.button 
-          whileHover={{ scale: 1.05 }} 
-          whileTap={{ scale: 0.95 }}   
-          type="submit" 
-          disabled={loading || !file}
-          className="w-full sm:w-auto px-12 sm:px-24 py-1.5 sm:py-2 bg-[#7716ad] text-white rounded-full font-fantapop text-xl sm:text-4xl shadow-[0_10px_30px_rgba(119,22,173,0.4)] disabled:opacity-60 disabled:cursor-not-allowed uppercase transition-all flex items-center justify-center"
+        <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} type="submit" disabled={loading || !file}
+          className="w-full sm:w-auto px-12 sm:px-24 py-1.5 sm:py-2 bg-[#7716ad] text-white rounded-full font-fantapop text-xl sm:text-4xl shadow-[0_10px_30px_rgba(119,22,173,0.4)] disabled:opacity-60 disabled:cursor-not-allowed uppercase"
         >
-          {loading ? (
-            <Loader2 className="animate-spin mx-auto" />
-          ) : (
-            <span className="inline-block translate-y-[2px] sm:translate-y-[4px]">
-              JUGAR
-            </span>
-          )}
+          {loading ? <Loader2 className="animate-spin mx-auto" /> : <span className="inline-block translate-y-[2px]">JUGAR</span>}
         </motion.button>
       </motion.div>
-
     </motion.form>
   )
 }

@@ -27,8 +27,6 @@ export default function RegisterPage() {
   const CAMPAIGN_NAME = process.env.NEXT_PUBLIC_CAMPAIGN || 'x'
   
   const params = useParams()
-  // 1. SOLUCIÓN: Aseguramos que params exista antes de intentar leer storeId.
-  // En Next.js App Router, params puede ser undefined en el primer render del cliente.
   const currentStoreId = params?.storeId as string
 
   const [campaignId, setCampaignId] = useState('')
@@ -42,7 +40,6 @@ export default function RegisterPage() {
   const [showLegal, setShowLegal] = useState(true)
 
   useEffect(() => {
-    // 2. SOLUCIÓN: No ejecutamos nada si currentStoreId aún no está listo.
     if (!currentStoreId) return;
 
     const initCampaignAndStore = async () => {
@@ -77,17 +74,16 @@ export default function RegisterPage() {
 
       setStoreName(store.name || '')
 
-      // C. Validar Stock de Premios
+      // C. Validar Stock de Premios (LÓGICA ESTRICTA: SOLO DE ESTA TIENDA)
       const { data: prizes, error: prizesError } = await supabase
         .from('prizes')
         .select('id, stock')
-        .eq('store_id', currentStoreId)
+        .eq('store_id', currentStoreId) // ELIMINADO EL .OR() - SOLO BUSCA EN ESTA TIENDA
         .eq('is_active', true)
         .gt('stock', 0)
 
       if (prizesError) {
          console.error("Error buscando premios:", prizesError)
-         // Si hay error de red, asumimos falso para salir del loader
          setHasPrizes(false)
          setIsValid(true)
          return
@@ -106,7 +102,6 @@ export default function RegisterPage() {
   }, [CAMPAIGN_NAME, currentStoreId])
 
   // PANTALLA DE CARGA
-  // Solo mostramos carga si las validaciones principales aún no se resuelven
   if (isValid === null || (isValid === true && hasPrizes === null)) return (
     <>
       <FondoUva />
@@ -130,7 +125,7 @@ export default function RegisterPage() {
     </>
   )
 
-  // ERROR 2: TIENDA SIN PREMIOS (Este es el que querías ver)
+  // ERROR 2: TIENDA SIN PREMIOS
   if (hasPrizes === false) return (
     <>
       <FondoUva />
@@ -142,7 +137,6 @@ export default function RegisterPage() {
         >
           <PackageX size={64} className="mb-4 text-[#f89824]" />
           
-          {/* Cartelito con el nombre de la tienda (Si se logró obtener) */}
           {storeName && (
              <div className="bg-[#f89824] text-black font-black uppercase text-xs tracking-widest px-4 py-1 rounded-full mb-4">
                {storeName}
@@ -181,7 +175,7 @@ export default function RegisterPage() {
                   <StoreHeader storeId={storeId} />
                   
                   <motion.div
-                    initial={{ x: -50, opacity: 0 }} animate={{ x: 0, opacity: 1 }}    
+                    initial={{ x: -50, opacity: 0 }} animate={{ x: 0, opacity: 1 }}   
                     transition={{ type: "spring", stiffness: 260, damping: 25, delay: 0.2 }}
                     className="bg-[#2c4896] w-fit py-2 sm:py-2 pr-8 sm:pr-10 rounded-r-full shadow-[5px_5px_15px_rgba(0,0,0,0.3)] mt-0 mb-4 sm:mt-0 sm:mb-6 relative z-20 -ml-8 sm:-ml-20 pl-10 sm:pl-16"
                   >
@@ -200,7 +194,6 @@ export default function RegisterPage() {
                     error={error}
                   />
 
-                  {/* Nombre de la tienda ajustado al contenido */}
                   {storeName && (
                     <motion.div 
                       initial={{ opacity: 0, y: 10 }}
