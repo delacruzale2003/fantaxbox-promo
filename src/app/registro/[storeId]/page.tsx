@@ -4,14 +4,12 @@ import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import { Loader2, AlertCircle, PackageX } from 'lucide-react'
 import { motion, AnimatePresence, Variants } from 'framer-motion'
-// NUEVO: Importamos useParams para atrapar el ID de la URL limpia
 import { useParams } from 'next/navigation' 
 import FondoUva from '../components/FondoUva'
 import ModalLegal from '../components/ModalLegal'
 import StoreHeader from '../components/StoreHeader'
 import RegisterForm from '../components/RegisterForm'
 import SuccessView from '../components/SuccessView'
-
 
 const carouselVariant: Variants = {
   hidden: { opacity: 0, x: 100, scale: 0.95 }, 
@@ -28,10 +26,10 @@ const carouselVariant: Variants = {
 export default function RegisterPage() {
   const CAMPAIGN_NAME = process.env.NEXT_PUBLIC_CAMPAIGN || 'x'
   
-  // NUEVO: Extraemos el storeId directamente desde la estructura de carpetas de Next.js
   const params = useParams()
-  // Asignamos el valor. params.storeId coincide exactamente con el nombre de tu carpeta [storeId]
-  const currentStoreId = params.storeId as string
+  // 1. SOLUCIÓN: Aseguramos que params exista antes de intentar leer storeId.
+  // En Next.js App Router, params puede ser undefined en el primer render del cliente.
+  const currentStoreId = params?.storeId as string
 
   const [campaignId, setCampaignId] = useState('')
   const [storeId, setStoreId] = useState('')
@@ -44,16 +42,13 @@ export default function RegisterPage() {
   const [showLegal, setShowLegal] = useState(true)
 
   useEffect(() => {
-    const initCampaignAndStore = async () => {
-      // 1. Validar que la URL tenga un ID
-      if (!currentStoreId) {
-        setIsValid(false)
-        return
-      }
+    // 2. SOLUCIÓN: No ejecutamos nada si currentStoreId aún no está listo.
+    if (!currentStoreId) return;
 
+    const initCampaignAndStore = async () => {
       setStoreId(currentStoreId)
 
-      // 2. Validar la Campaña
+      // A. Validar la Campaña
       const { data: campaign, error: campError } = await supabase
         .from('campaigns')
         .select('id, is_active')
@@ -61,12 +56,13 @@ export default function RegisterPage() {
         .single()
 
       if (campError || !campaign || !campaign.is_active) {
+        console.error("Error validando campaña:", campError)
         setIsValid(false)
         return
       }
       setCampaignId(campaign.id)
 
-      // 3. Validar que la tienda exista y esté activa usando el ID de la URL
+      // B. Validar la Tienda
       const { data: store, error: storeError } = await supabase
         .from('stores')
         .select('id, is_active, name')
@@ -74,19 +70,28 @@ export default function RegisterPage() {
         .single()
 
       if (storeError || !store || !store.is_active) {
+        console.error("Error validando tienda:", storeError)
         setIsValid(false)
         return
       }
 
       setStoreName(store.name || '')
 
-      // 4. VERIFICAR STOCK DE PREMIOS EN ESTA TIENDA
-      const { data: prizes } = await supabase
+      // C. Validar Stock de Premios
+      const { data: prizes, error: prizesError } = await supabase
         .from('prizes')
         .select('id, stock')
         .eq('store_id', currentStoreId)
         .eq('is_active', true)
         .gt('stock', 0)
+
+      if (prizesError) {
+         console.error("Error buscando premios:", prizesError)
+         // Si hay error de red, asumimos falso para salir del loader
+         setHasPrizes(false)
+         setIsValid(true)
+         return
+      }
 
       if (!prizes || prizes.length === 0) {
         setHasPrizes(false)
@@ -98,13 +103,14 @@ export default function RegisterPage() {
     }
 
     initCampaignAndStore()
-  }, [CAMPAIGN_NAME, currentStoreId]) // Agregamos currentStoreId a las dependencias
+  }, [CAMPAIGN_NAME, currentStoreId])
 
   // PANTALLA DE CARGA
-  if (isValid === null || hasPrizes === null) return (
+  // Solo mostramos carga si las validaciones principales aún no se resuelven
+  if (isValid === null || (isValid === true && hasPrizes === null)) return (
     <>
       <FondoUva />
-      <div className="min-h-screen flex items-center justify-center relative z-10">
+      <div className="min-h-[100dvh] flex items-center justify-center relative z-10">
         <motion.div animate={{ scale: [1, 1.2, 1], rotate: [0, 180, 360] }} transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }}>
           <Loader2 className="text-white/50" size={50} />
         </motion.div>
@@ -116,24 +122,40 @@ export default function RegisterPage() {
   if (isValid === false) return (
     <>
       <FondoUva />
-      <div className="min-h-screen flex flex-col items-center justify-center p-6 text-white text-center relative z-10">
-        <AlertCircle size={64} className="mb-4 opacity-50" />
+      <div className="min-h-[100dvh] flex flex-col items-center justify-center p-6 text-white text-center relative z-10">
+        <AlertCircle size={64} className="mb-4 opacity-50 text-red-400" />
         <h1 className="text-2xl font-black uppercase tracking-tighter">Acceso no válido</h1>
         <p className="opacity-80">El código QR es incorrecto o la campaña ha finalizado.</p>
       </div>
     </>
   )
 
-  // ERROR 2: TIENDA SIN PREMIOS
+  // ERROR 2: TIENDA SIN PREMIOS (Este es el que querías ver)
   if (hasPrizes === false) return (
     <>
       <FondoUva />
-      <div className="min-h-screen flex flex-col items-center justify-center p-6 text-white text-center relative z-10">
-        <PackageX size={64} className="mb-4 text-[#f89824]" />
-        <h1 className="text-3xl font-fantapop uppercase mb-2">¡Premios Agotados!</h1>
-        <p className="opacity-90 max-w-sm">
-          Lo sentimos, todos los premios asignados a esta tienda ya han sido entregados. ¡Sigue participando en otros locales autorizados!
-        </p>
+      <div className="min-h-[100dvh] flex flex-col items-center justify-center p-6 text-white text-center relative z-10 selection:bg-white/30">
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-black/40 backdrop-blur-md p-8 rounded-[2.5rem] border border-white/10 flex flex-col items-center max-w-sm w-full shadow-2xl"
+        >
+          <PackageX size={64} className="mb-4 text-[#f89824]" />
+          
+          {/* Cartelito con el nombre de la tienda (Si se logró obtener) */}
+          {storeName && (
+             <div className="bg-[#f89824] text-black font-black uppercase text-xs tracking-widest px-4 py-1 rounded-full mb-4">
+               {storeName}
+             </div>
+          )}
+
+          <h1 className="text-2xl sm:text-3xl font-fantapop uppercase mb-3 leading-tight text-white drop-shadow-md">
+            ¡Premios <br/> Agotados!
+          </h1>
+          <p className="opacity-90 text-sm sm:text-base font-medium">
+            Lo sentimos, todos los premios asignados a este local ya han sido entregados. ¡Sigue participando en otras tiendas autorizadas!
+          </p>
+        </motion.div>
       </div>
     </>
   )
@@ -145,7 +167,7 @@ export default function RegisterPage() {
         {showLegal && <ModalLegal onAccept={() => setShowLegal(false)} />}
       </AnimatePresence>
 
-      <main className="min-h-screen relative z-10 flex items-center justify-center p-4 md:p-8 font-sans selection:bg-white/30 overflow-hidden">
+      <main className="min-h-[100dvh] relative z-10 flex items-center justify-center p-4 md:p-8 font-sans selection:bg-white/30 overflow-hidden">
         <AnimatePresence mode="wait">
           {!showLegal && (
             <motion.div 
@@ -189,7 +211,6 @@ export default function RegisterPage() {
                       <p className="text-white/70 text-[10px] sm:text-xs font-bold uppercase tracking-widest mb-1 mt-4">
                         Tienda
                       </p>
-                      {/* Aquí cambiamos max-w-3xs por w-fit / inline-block y ajustamos el padding horizontal (px-6) */}
                       <p className="text-white font-fantapop text-lg sm:text-xl tracking-wider uppercase bg-[#550a7f] rounded-full py-1.5 sm:py-2 px-6 inline-block">
                         {storeName}
                       </p>
