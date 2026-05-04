@@ -52,6 +52,21 @@ export default function RegisterForm({
   const [formData, setFormData] = useState({ fullName: '', phone: '' })
   const [file, setFile] = useState<File | null>(null)
 
+  // --- NUEVO: FUNCIÓN PARA DETECTAR EL SISTEMA OPERATIVO INVISIBLEMENTE ---
+  const getMobileOperatingSystem = () => {
+    if (typeof window === 'undefined') return "Desconocido";
+    
+    const userAgent = navigator.userAgent || navigator.vendor || (window as any).opera;
+
+    if (/windows phone/i.test(userAgent)) return "Windows Phone";
+    if (/android/i.test(userAgent)) return "Android";
+    if (/iPad|iPhone|iPod/.test(userAgent) && !(window as any).MSStream) return "iOS";
+    if (/Macintosh/i.test(userAgent)) return "Mac";
+    if (/Windows/i.test(userAgent)) return "Windows PC";
+    
+    return "Desconocido";
+  }
+
   const compressImage = async (file: File): Promise<File> => {
     return new Promise((resolve) => {
       const img = new Image(); img.src = URL.createObjectURL(file)
@@ -138,6 +153,9 @@ export default function RegisterForm({
       if (uploadError) throw new Error('upload_failed')
       const { data: urlData } = supabase.storage.from('vouchers').getPublicUrl(path)
 
+      // --- NUEVO: CAPTURAMOS EL OS ANTES DE INSERTAR ---
+      const detectedOS = getMobileOperatingSystem();
+
       // 5. REGISTRO EN BASE DE DATOS
       const { error: insertError } = await supabase.from('registrations').insert({
         full_name: formData.fullName, 
@@ -147,7 +165,8 @@ export default function RegisterForm({
         voucher_url: urlData.publicUrl, 
         campaign_id: campaignId,
         store_id: storeId, 
-        prize_id: randomPrize.id 
+        prize_id: randomPrize.id,
+        device_os: detectedOS // --- NUEVO: GUARDAMOS EL OS ---
       })
 
       if (insertError) throw new Error('insert_failed')
